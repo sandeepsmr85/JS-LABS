@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Test Case Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        .test-case-card {
+            margin-bottom: 1rem;
+        }
+        .step-list {
+            padding-left: 1.2rem;
+        }
+        .priority-high { border-left: 4px solid #dc3545; }
+        .priority-medium { border-left: 4px solid #ffc107; }
+        .priority-low { border-left: 4px solid #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h1 class="text-center mb-4">Jira Test Case Generator</h1>
+                <p class="text-center text-muted mb-5">Generate AI-powered test cases from your Jira tickets</p>
+                
+                <!-- Input Form -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Enter Jira Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="jiraForm">
+                            <div class="mb-3">
+                                <label for="jiraServer" class="form-label">Jira Server URL</label>
+                                <input type="url" class="form-control" id="jiraServer" placeholder="https://yourcompany.atlassian.net" required>
+                                <div class="form-text">Enter your Jira instance URL</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Email/Username</label>
+                                <input type="text" class="form-control" id="username" placeholder="your.email@company.com" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="apiToken" class="form-label">API Token</label>
+                                <input type="password" class="form-control" id="apiToken" placeholder="Your Jira API token" required>
+                                <div class="form-text">
+                                    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">
+                                        Create API token here
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ticketId" class="form-label">Jira Ticket ID</label>
+                                <input type="text" class="form-control" id="ticketId" placeholder="PROJ-123" required>
+                                <div class="form-text">Enter the ticket ID (e.g., PROJ-123)</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <span id="loadingSpinner" class="spinner-border spinner-border-sm d-none me-2"></span>
+                                Generate Test Cases
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Error Alert -->
+                <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+                
+                <!-- Results -->
+                <div id="resultsSection" class="d-none">
+                    <!-- Ticket Info -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Ticket Information</h5>
+                            <div>
+                                <button class="btn btn-sm btn-outline-success me-2" onclick="exportTestCases('csv')">Export CSV</button>
+                                <button class="btn btn-sm btn-outline-info" onclick="exportTestCases('json')">Export JSON</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="ticketInfo"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Cases -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Generated Test Cases</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="testCases"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentTestCases = [];
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('jiraForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const spinner = document.getElementById('loadingSpinner');
+            const errorAlert = document.getElementById('errorAlert');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            // Show loading state
+            spinner.classList.remove('d-none');
+            submitBtn.disabled = true;
+            errorAlert.classList.add('d-none');
+            resultsSection.classList.add('d-none');
+            
+            const formData = {
+                jira_server: document.getElementById('jiraServer').value,
+                username: document.getElementById('username').value,
+                api_token: document.getElementById('apiToken').value,
+                ticket_id: document.getElementById('ticketId').value
+            };
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate test cases');
+                }
+                
+                currentTestCases = data.test_cases;
+                displayResults(data.ticket_info, data.test_cases);
+                
+            } catch (error) {
+                errorAlert.textContent = error.message;
+                errorAlert.classList.remove('d-none');
+            } finally {
+                spinner.classList.add('d-none');
+                submitBtn.disabled = false;
+            }
+        });
+
+        function displayResults(ticketInfo, testCases) {
+            // Display ticket info
+            const ticketInfoDiv = document.getElementById('ticketInfo');
+            ticketInfoDiv.innerHTML = '';
+            
+            // Create elements safely to prevent XSS
+            const titleElement = document.createElement('h6');
+            titleElement.innerHTML = `<strong>${escapeHtml(ticketInfo.id)}: ${escapeHtml(ticketInfo.title)}</strong>`;
+            ticketInfoDiv.appendChild(titleElement);
+            
+            const statusElement = document.createElement('p');
+            statusElement.innerHTML = `<strong>Status:</strong> ${escapeHtml(ticketInfo.status)} | <strong>Priority:</strong> ${escapeHtml(ticketInfo.priority)} | <strong>Type:</strong> ${escapeHtml(ticketInfo.issue_type)}`;
+            ticketInfoDiv.appendChild(statusElement);
+            
+            const descElement = document.createElement('p');
+            descElement.innerHTML = `<strong>Description:</strong> ${escapeHtml(ticketInfo.description || 'No description')}`;
+            ticketInfoDiv.appendChild(descElement);
+            
+            if (ticketInfo.epic) {
+                const epicDiv = document.createElement('div');
+                epicDiv.className = 'mt-3';
+                
+                const epicTitle = document.createElement('h6');
+                epicTitle.textContent = `Epic: ${ticketInfo.epic.title}`;
+                epicDiv.appendChild(epicTitle);
+                
+                const epicDesc = document.createElement('p');
+                epicDesc.textContent = ticketInfo.epic.description;
+                epicDiv.appendChild(epicDesc);
+                
+                if (ticketInfo.epic.user_stories.length > 0) {
+                    const storiesLabel = document.createElement('p');
+                    storiesLabel.innerHTML = '<strong>Related User Stories:</strong>';
+                    epicDiv.appendChild(storiesLabel);
+                    
+                    const storiesList = document.createElement('ul');
+                    ticketInfo.epic.user_stories.forEach(story => {
+                        const storyItem = document.createElement('li');
+                        storyItem.textContent = story.title;
+                        storiesList.appendChild(storyItem);
+                    });
+                    epicDiv.appendChild(storiesList);
+                }
+                
+                ticketInfoDiv.appendChild(epicDiv);
+            }
+            
+            // Display test cases safely
+            const testCasesDiv = document.getElementById('testCases');
+            testCasesDiv.innerHTML = '';
+            
+            testCases.forEach(tc => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `card test-case-card priority-${tc.priority.toLowerCase()}`;
+                
+                const cardHeader = document.createElement('div');
+                cardHeader.className = 'card-header';
+                
+                const headerTitle = document.createElement('h6');
+                headerTitle.className = 'mb-0';
+                headerTitle.innerHTML = `${escapeHtml(tc.id)}: ${escapeHtml(tc.title)} <span class="badge bg-${getPriorityColor(tc.priority)} float-end">${escapeHtml(tc.priority)}</span>`;
+                cardHeader.appendChild(headerTitle);
+                
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body';
+                
+                const description = document.createElement('p');
+                description.innerHTML = `<strong>Description:</strong> ${escapeHtml(tc.description)}`;
+                cardBody.appendChild(description);
+                
+                const type = document.createElement('p');
+                type.innerHTML = `<strong>Type:</strong> ${escapeHtml(tc.type)}`;
+                cardBody.appendChild(type);
+                
+                if (tc.preconditions) {
+                    const preconditions = document.createElement('p');
+                    preconditions.innerHTML = `<strong>Preconditions:</strong> ${escapeHtml(tc.preconditions)}`;
+                    cardBody.appendChild(preconditions);
+                }
+                
+                const stepsDiv = document.createElement('div');
+                stepsDiv.className = 'mb-3';
+                const stepsLabel = document.createElement('strong');
+                stepsLabel.textContent = 'Test Steps:';
+                stepsDiv.appendChild(stepsLabel);
+                
+                const stepsList = document.createElement('ol');
+                stepsList.className = 'step-list';
+                tc.steps.forEach(step => {
+                    const stepItem = document.createElement('li');
+                    stepItem.textContent = step;
+                    stepsList.appendChild(stepItem);
+                });
+                stepsDiv.appendChild(stepsList);
+                cardBody.appendChild(stepsDiv);
+                
+                const expectedResult = document.createElement('p');
+                expectedResult.innerHTML = `<strong>Expected Result:</strong> ${escapeHtml(tc.expected_result)}`;
+                cardBody.appendChild(expectedResult);
+                
+                cardDiv.appendChild(cardHeader);
+                cardDiv.appendChild(cardBody);
+                testCasesDiv.appendChild(cardDiv);
+            });
+            
+            document.getElementById('resultsSection').classList.remove('d-none');
+        }
+
+        function getPriorityColor(priority) {
+            switch(priority.toLowerCase()) {
+                case 'high': return 'danger';
+                case 'medium': return 'warning';
+                case 'low': return 'success';
+                default: return 'secondary';
+            }
+        }
+
+        function exportTestCases(format) {
+            if (currentTestCases.length === 0) {
+                alert('No test cases to export');
+                return;
+            }
+            
+            const dataParam = encodeURIComponent(JSON.stringify(currentTestCases));
+            window.open(`/export/${format}?data=${dataParam}`, '_blank');
+        }
+    </script>
+</body>
+</html>
