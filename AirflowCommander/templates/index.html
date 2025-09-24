@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Test Case Generator</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="d-flex h-100">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h5 class="mb-0"><i class="bi bi-robot"></i> AI Test Generator</h5>
+                <button class="btn btn-outline-primary btn-sm new-conversation-btn" id="newConversationBtn">
+                    <i class="bi bi-plus"></i> New Conversation
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="conversation-list" id="conversationList">
+                    <!-- Conversations will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content flex-grow-1 d-flex flex-column">
+            <!-- Header -->
+            <div class="main-header">
+                <div class="container-fluid">
+                    <h6 class="mb-0" id="conversationTitle">Select or create a conversation to get started</h6>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-container flex-grow-1">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Welcome Message -->
+                    <div class="welcome-message text-center" id="welcomeMessage">
+                        <div class="mb-4">
+                            <i class="bi bi-robot display-4 text-primary"></i>
+                        </div>
+                        <h3>AI Test Case Generator</h3>
+                        <p class="text-muted">Generate comprehensive test cases from Jira stories using AI</p>
+                        <div class="mt-4">
+                            <p><strong>How to get started:</strong></p>
+                            <ol class="text-start d-inline-block">
+                                <li>Click "New Conversation" to create a new session</li>
+                                <li>Enter your Jira details and story ID</li>
+                                <li>Optionally add custom prompts for focused test generation</li>
+                                <li>Review and refine the generated test cases</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <!-- Messages will appear here -->
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area" id="inputArea" style="display: none;">
+                <div class="container-fluid">
+                    <!-- Jira Configuration Form (shown initially) -->
+                    <div class="jira-form-container" id="jiraFormContainer">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-server"></i> Jira Configuration</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="jiraForm">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="jiraUrl" class="form-label">Jira URL</label>
+                                            <input type="url" class="form-control" id="jiraUrl" placeholder="https://your-domain.atlassian.net" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="jiraUsername" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="jiraUsername" placeholder="your.email@domain.com" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="jiraPassword" class="form-label">API Token/Password</label>
+                                            <input type="password" class="form-control" id="jiraPassword" placeholder="Your API token" required>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-2">
+                                        <div class="col-md-6">
+                                            <label for="jiraStoryId" class="form-label">Jira Story ID</label>
+                                            <input type="text" class="form-control" id="jiraStoryId" placeholder="PROJ-123" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="aiModel" class="form-label">AI Model</label>
+                                            <select class="form-select" id="aiModel" required>
+                                                <!-- Models will be loaded dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label for="customPrompt" class="form-label">Custom Prompt (Optional)</label>
+                                            <input type="text" class="form-control" id="customPrompt" placeholder="Focus on API testing, negative scenarios, etc.">
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-play-circle"></i> Generate Test Cases
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Refinement Input (shown after initial generation) -->
+                    <div class="refinement-container" id="refinementContainer" style="display: none;">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="refinementInput" placeholder="How would you like to refine the test cases?">
+                            <button class="btn btn-outline-secondary" type="button" id="refinementBtn">
+                                <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                Examples: "Add more edge cases", "Focus on security testing", "Include performance scenarios"
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Satisfaction Check -->
+                    <div class="satisfaction-check" id="satisfactionCheck" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-center gap-3">
+                            <span>Are these test cases sufficient?</span>
+                            <button class="btn btn-success btn-sm" id="satisfiedBtn">
+                                <i class="bi bi-check-circle"></i> Yes, save conversation
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" id="refineBtn">
+                                <i class="bi bi-pencil"></i> No, let me refine
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <div>Generating test cases...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
