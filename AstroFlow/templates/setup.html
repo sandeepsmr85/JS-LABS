@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Setup - Playwright Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 Playwright Test Dashboard</h1>
+            <nav>
+                <a href="/">New Test</a>
+                <a href="/history">History</a>
+                <a href="/setup" class="active">Setup Agent</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="setup-section">
+                <h2>Local Agent Setup</h2>
+                <p class="intro-text">
+                    To execute Playwright tests on your local machine, you need to install and run the local agent. 
+                    The agent connects to this server, receives test code, and executes it in your chosen browser.
+                </p>
+
+                <div class="download-box">
+                    <h3>📥 Step 1: Download Agent Script</h3>
+                    <a href="/download/agent" class="download-btn" download>
+                        Download install_and_run_agent.sh
+                    </a>
+                    <p class="help-text">This script will automatically install all dependencies and start the agent.</p>
+                </div>
+
+                <div class="instructions-box">
+                    <h3>⚙️ Step 2: Run the Agent</h3>
+                    
+                    <div class="instruction-step">
+                        <h4>On Linux / macOS:</h4>
+                        <p>Open your terminal and run:</p>
+                        <div class="code-box">
+                            <code>bash install_and_run_agent.sh</code>
+                            <button class="copy-btn" onclick="copyToClipboard('bash install_and_run_agent.sh')">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="instruction-step">
+                        <h4>To connect to this server:</h4>
+                        <p>Set the SERVER_URL environment variable:</p>
+                        <div class="code-box">
+                            <code id="server-command">SERVER_URL={{ server_url }} bash install_and_run_agent.sh</code>
+                            <button class="copy-btn" onclick="copyToClipboard(document.getElementById('server-command').textContent)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="instruction-step">
+                        <h4>On Windows:</h4>
+                        <p>Use Git Bash or WSL (Windows Subsystem for Linux) and run the same commands above.</p>
+                    </div>
+                </div>
+
+                <div class="requirements-box">
+                    <h3>📋 Requirements</h3>
+                    <ul>
+                        <li><strong>Python 3.8+</strong> - Required for running Playwright</li>
+                        <li><strong>Internet Connection</strong> - To download dependencies and browsers</li>
+                        <li><strong>~500MB Disk Space</strong> - For Playwright browsers</li>
+                    </ul>
+                </div>
+
+                <div class="what-happens-box">
+                    <h3>🔄 What the Script Does</h3>
+                    <ol>
+                        <li>Checks for Python 3 installation</li>
+                        <li>Creates a Python virtual environment at <code>~/.playwright_agent</code></li>
+                        <li>Installs required Python packages (Playwright, websocket-client, etc.)</li>
+                        <li>Downloads and installs all Playwright browsers (Chromium, Firefox, WebKit)</li>
+                        <li>Connects to the server and starts listening for test commands</li>
+                    </ol>
+                </div>
+
+                <div class="troubleshooting-box">
+                    <h3>🔧 Troubleshooting</h3>
+                    <div class="trouble-item">
+                        <strong>Python not found:</strong>
+                        <p>Install Python 3.8 or higher from <a href="https://www.python.org/downloads/" target="_blank">python.org</a></p>
+                    </div>
+                    <div class="trouble-item">
+                        <strong>Permission denied:</strong>
+                        <p>Make the script executable: <code>chmod +x install_and_run_agent.sh</code></p>
+                    </div>
+                    <div class="trouble-item">
+                        <strong>Can't connect to server:</strong>
+                        <p>Ensure you're using the correct SERVER_URL and the server is accessible from your network.</p>
+                    </div>
+                </div>
+
+                <div class="status-box">
+                    <h3>✅ Agent Connection Status</h3>
+                    <div class="agent-status-display">
+                        <div id="agent-status-indicator" class="status-indicator disconnected">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                        <p id="agent-count" class="agent-count">Agents connected: <strong>0</strong></p>
+                    </div>
+                    <p class="note">Note: Tests created in the dashboard will be queued and executed by your local agent in real-time.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io('/');
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        function updateAgentStatus(connected, count) {
+            const indicator = document.getElementById('agent-status-indicator');
+            const statusText = indicator.querySelector('.status-text');
+            const countElement = document.getElementById('agent-count');
+            
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                statusText.textContent = 'Agent Connected';
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                statusText.textContent = 'No Agent Connected';
+            }
+            
+            countElement.innerHTML = `Agents connected: <strong>${count}</strong>`;
+        }
+        
+        async function checkAgentStatus() {
+            try {
+                const response = await fetch('/api/agent/status');
+                const data = await response.json();
+                updateAgentStatus(data.connected, data.count);
+            } catch (error) {
+                console.error('Error checking agent status:', error);
+            }
+        }
+        
+        socket.on('agent_status_update', (data) => {
+            updateAgentStatus(data.connected, data.count);
+        });
+        
+        checkAgentStatus();
+        setInterval(checkAgentStatus, 5000);
+    </script>
+</body>
+</html>

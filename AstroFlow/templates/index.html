@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playwright Test Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 Playwright Test Dashboard</h1>
+            <nav>
+                <a href="/" class="active">New Test</a>
+                <a href="/history">History</a>
+                <a href="/setup">Setup Agent</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="test-form">
+                <h2>Create New Test</h2>
+                <p class="browser-info">Detected Browser: <span id="detected-browser">...</span></p>
+                
+                <form id="test-form">
+                    <label for="command">Natural Language Test Command:</label>
+                    <textarea 
+                        id="command" 
+                        name="command" 
+                        rows="4" 
+                        placeholder="Example: Open Google and search for Playwright documentation"
+                        required
+                    ></textarea>
+                    
+                    <button type="submit" id="submit-btn">Generate & Run Test</button>
+                </form>
+            </div>
+
+            <div id="test-status" class="test-status hidden">
+                <h3>Test Status</h3>
+                <div class="status-badge" id="status-badge">Generating...</div>
+                <p><strong>Test ID:</strong> <span id="test-id">-</span></p>
+                <p><strong>Browser:</strong> <span id="test-browser">-</span></p>
+            </div>
+
+            <div id="generated-code" class="generated-code hidden">
+                <h3>Generated Playwright Code</h3>
+                <pre><code id="code-content"></code></pre>
+            </div>
+
+            <div id="execution-logs" class="execution-logs hidden">
+                <h3>Execution Logs</h3>
+                <div id="logs-content"></div>
+            </div>
+
+            <div id="screenshot-viewer" class="screenshot-viewer hidden">
+                <h3>Screenshot</h3>
+                <img id="screenshot" src="" alt="Test Screenshot">
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test History - Playwright Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 Playwright Test Dashboard</h1>
+            <nav>
+                <a href="/">New Test</a>
+                <a href="/history" class="active">History</a>
+                <a href="/setup">Setup Agent</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2>Test History</h2>
+            
+            {% if test_runs %}
+            <div class="history-list">
+                {% for test in test_runs %}
+                <div class="history-item">
+                    <div class="history-header">
+                        <span class="test-id">#{{ test.id }}</span>
+                        <span class="status-badge status-{{ test.status }}">{{ test.status }}</span>
+                        <span class="browser-badge">{{ test.browser }}</span>
+                        <span class="timestamp">{{ test.created_at }}</span>
+                    </div>
+                    
+                    <div class="history-body">
+                        <h4>Command</h4>
+                        <p class="nl-command">{{ test.nl_command }}</p>
+                        
+                        <details>
+                            <summary>Generated Code</summary>
+                            <pre><code>{{ test.generated_code }}</code></pre>
+                        </details>
+                        
+                        {% if test.execution_logs %}
+                        <details>
+                            <summary>Execution Logs</summary>
+                            <pre class="logs">{{ test.execution_logs }}</pre>
+                        </details>
+                        {% endif %}
+                        
+                        {% if test.screenshot_path %}
+                        <div class="screenshot-thumbnail">
+                            <img src="/{{ test.screenshot_path }}" alt="Test Screenshot" onclick="window.open('/{{ test.screenshot_path }}', '_blank')">
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-tests">No test runs yet. <a href="/">Create your first test</a></p>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>
